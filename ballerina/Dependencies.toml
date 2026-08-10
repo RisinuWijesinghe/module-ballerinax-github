@@ -333,7 +333,7 @@ dependencies = [
 [[package]]
 org = "ballerinax"
 name = "github"
-version = "6.0.0"
+version = "6.1.0"
 dependencies = [
 	{org = "ballerina", name = "constraint"},
 	{org = "ballerina", name = "data.jsondata"},
