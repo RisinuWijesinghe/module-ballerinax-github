@@ -40,11 +40,11 @@ The connector supports two ways of authenticating with the GitHub REST API:
 
 #### Step 4: Generate a New Token
 
-1. Click on the **Generate new token** button (you might be asked to enter you password again for security purposes).
+1. Click on the **Generate new token** button (you might be asked to enter your password again for security purposes).
 
 #### Step 5: Configure & Generate the Token
 
- - **Note**: Give your token a descriptive name so you can remember it's purpose
+ - **Note**: Give your token a descriptive name so you can remember its purpose
  - **Expiration**: Select the duration before the token expires (e.g., 30 days, 60 days, 90 days, custom, or no expiration).
  - **Select Scopes**: Scopes control access for the token. Choose what you need the token for (e.g., repo access, user data access). For typical repository operations, selecting `repo` is often sufficient.
 
@@ -72,13 +72,15 @@ Click **Install App** and install it on the user account or organization whose r
 
 #### Step 5: Obtain a refresh token via the web application flow
 
-1. Direct the user to the authorization page, replacing the placeholders with your own values:
+1. Direct the user to the authorization page, replacing the placeholders with your own values. Generate `<RANDOM_STRING>` fresh for every authorization attempt and store it against the user's session — it is the CSRF guard for this flow:
 
     ```
     https://github.com/login/oauth/authorize?client_id=<CLIENT_ID>&redirect_uri=<CALLBACK_URL>&state=<RANDOM_STRING>
     ```
 
-2. After the user approves, GitHub redirects to the callback URL with a temporary `code` query parameter.
+2. After the user approves, GitHub redirects to the callback URL with a temporary `code` query parameter and the `state` you sent.
+
+    Compare the returned `state` against the value you stored and **abort without exchanging the code** if it is absent or does not match. Skipping this check lets an attacker feed their own `code` to your callback and bind the victim's session to an account the attacker controls. Discard the stored value once used, so a `state` cannot be replayed.
 
 3. Exchange that code for tokens:
 
@@ -98,14 +100,14 @@ Click **Install App** and install it on the user account or organization whose r
       "access_token": "ghu_...",
       "expires_in": 28800,
       "refresh_token": "ghr_...",
-      "refresh_token_expires_in": 15811200,
+      "refresh_token_expires_in": 15897600,
       "token_type": "bearer"
     }
     ```
 
 4. Keep the `client_id`, `client_secret`, and `refresh_token` — these are the three values the connector needs. The connector exchanges the refresh token for an access token on the first request and renews it automatically whenever it expires.
 
-> **Note:** GitHub rotates refresh tokens. Every renewal returns a new refresh token and invalidates the previous one. The connector holds the new token in memory for the lifetime of the `github:Client` value, but it is not written back to your configuration. If your process may be restarted after a token renewal, persist the latest refresh token yourself or re-run the authorization flow.
+> **Note:** GitHub rotates refresh tokens. Every renewal returns a new refresh token and invalidates the previous one. The connector holds the new token in memory for the lifetime of the `github:Client` value; `ballerina/oauth2` provides no API to read it back, so it cannot be persisted. A process that restarts after a renewal therefore needs to be reauthorized with a freshly obtained refresh token.
 
 ## Quickstart
 

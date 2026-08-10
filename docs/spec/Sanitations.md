@@ -100,7 +100,9 @@ This file documents the modifications applied to enhance the usability of the of
     }
     ```
 
-    Only the `authorizationCode` flow is declared, because it is the only OAuth2 grant GitHub implements. GitHub does not support the client credentials, resource owner password, or JWT bearer grants, so no other `flows` entry would be honoured by the token endpoint.
+    Only the `authorizationCode` flow is declared, because this connector models just GitHub's **web application flow** — the one that issues the user access token and refresh token pair the generated client then renews. Of the four flow types an OpenAPI 3.0 OAuth Flows Object permits (`implicit`, `password`, `clientCredentials`, `authorizationCode`), it is also the only one GitHub's token endpoint would honour.
+
+    This is not a claim that GitHub implements no other OAuth2 grant. GitHub also offers the **device flow**, which is out of scope here rather than unsupported by GitHub.
 
     The scheme deliberately covers **only** GitHub App user access tokens with expiry enabled. OAuth App tokens and personal access tokens neither expire nor carry a refresh token, so they remain on the pre-existing `bearerAuth` scheme; the description states this so the empty `scopes` map cannot be read as an omission.
 
@@ -110,7 +112,7 @@ This file documents the modifications applied to enhance the usability of the of
 
     GitHub's published specification will never carry this scheme, so both additions must be re-applied whenever the spec is refreshed from upstream.
 
-16. Override two defaults on the generated `OAuth2RefreshTokenGrantConfig` record in `ballerina/types.bal` so the refresh token grant works against GitHub out of the box. This is a **post-generation edit** — regenerating the client drops both overrides, so they must be re-applied.
+16. Add the defaults to the generated `OAuth2RefreshTokenGrantConfig` record in `ballerina/types.bal` so the refresh token grant works against GitHub out of the box. They are **post-generation edits** — regenerating the client drops them, so they must be re-applied.
 
     ```ballerina
     # OAuth2 Refresh Token Grant Configs
@@ -118,9 +120,11 @@ This file documents the modifications applied to enhance the usability of the of
         *http:OAuth2RefreshTokenGrantConfig;
         # Refresh URL
         string refreshUrl = "https://github.com/login/oauth/access_token";
-        # ...
+
+        // added by hand — re-apply both after every regeneration
+        # GitHub expects `client_id` and `client_secret` in the request body, not in a Basic auth header
         oauth2:CredentialBearer credentialBearer = oauth2:POST_BODY_BEARER;
-        # ...
+        # Sends `Accept: application/json`; without it GitHub returns a form-encoded token response
         oauth2:ClientConfiguration clientConfig = {customHeaders: {"Accept": "application/json"}};
     |};
     ```
