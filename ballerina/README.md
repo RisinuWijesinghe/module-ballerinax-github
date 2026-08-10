@@ -13,7 +13,7 @@ The GitHub connector is designed to interface with [GitHub's REST API (version 2
 
 ## Setup guide
 
-To use the GitHub connector you need a GitHub account. If you already have one, you can integrate the connector with your existing account. If not, create a new account by visiting [GitHub's Sign Up page](https://github.com/) and following the registration process.
+To use the GitHub connector, you need a GitHub account. If you already have one, you can integrate the connector with your existing account. If not, create a new account by visiting [GitHub's Sign Up page](https://github.com/) and following the registration process.
 
 The connector supports two ways of authenticating with the GitHub REST API:
 
@@ -42,13 +42,14 @@ The connector supports two ways of authenticating with the GitHub REST API:
 
 #### Step 4: Generate a New Token
 
-1. Click on the **Generate new token** button (you might be asked to enter your password again for security purposes).
+1. Click on the **Generate new token** button and choose either **classic** or **fine-grained**. The steps and screenshots below show a classic token; the fine-grained equivalent is noted in Step 5. You might be asked to enter your password again for security purposes.
 
 #### Step 5: Configure & Generate the Token
 
  - **Note**: Give your token a descriptive name so you can remember its purpose
  - **Expiration**: Select the duration before the token expires (e.g., 30 days, 60 days, 90 days, custom, or no expiration).
- - **Select Scopes**: Scopes control access for the token. Choose what you need the token for (e.g., repo access, user data access). For typical repository operations, selecting `repo` is often sufficient.
+ - **Select Scopes** *(classic tokens)*: Scopes control access for the token. Choose what you need the token for (e.g., repo access, user data access). For typical repository operations, selecting `repo` is often sufficient.
+ - **Select Permissions** *(fine-grained tokens)*: Fine-grained tokens have no scopes — `repo` and the other classic scopes do not appear. Instead, pick a **Resource owner**, limit **Repository access** to the repositories you need, and grant only the required **Repository permissions**. For the operations shown in the examples below, *Contents: Read and write* and *Issues: Read and write* are enough.
 
     <img src=https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-github/master/docs/setup/resources/2-generate-token.png alt="Generate new PAT">
 
@@ -76,7 +77,7 @@ Click **Install App** and install it on the user account or organization whose r
 
 1. Direct the user to the authorization page, replacing the placeholders with your own values. Generate `<RANDOM_STRING>` fresh for every authorization attempt and store it against the user's session — it is the CSRF guard for this flow:
 
-    ```
+    ```text
     https://github.com/login/oauth/authorize?client_id=<CLIENT_ID>&redirect_uri=<CALLBACK_URL>&state=<RANDOM_STRING>
     ```
 

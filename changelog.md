@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Added support for the OAuth2 refresh token grant, so GitHub App user access tokens are renewed automatically when they expire. `ConnectionConfig.auth` now accepts `http:BearerTokenConfig|OAuth2RefreshTokenGrantConfig`; existing PAT configurations are unaffected
+- [[#9014](https://github.com/ballerina-platform/ballerina-library/issues/9014)] Added support for the OAuth2 refresh token grant, so GitHub App user access tokens are renewed automatically when they expire. `ConnectionConfig.auth` now accepts `http:BearerTokenConfig|OAuth2RefreshTokenGrantConfig`; existing PAT configurations are unaffected
 
 ## [6.0.0] - 2026-05-14
 
