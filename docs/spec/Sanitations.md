@@ -76,6 +76,28 @@ This file documents the modifications applied to enhance the usability of the of
 
 14. Remove the `default: false` from the `allow_forking` field in the `PATCH /repos/{owner}/{repo}` request body (`OwnerrepoBody1`). The GitHub API returns a 422 ("Allow forks can only be changed on org-owned repositories") if `allow_forking` is sent for a personal repository, but the default caused it to always be included in the request. Making it optional (no default) resolves this.
 
+15. Add the defaults to the generated `OAuth2RefreshTokenGrantConfig` record in `ballerina/types.bal` so the refresh token grant works against GitHub out of the box. They are **post-generation edits** — regenerating the client drops them, so they must be re-applied.
+
+    ```ballerina
+    # OAuth2 Refresh Token Grant Configs
+    public type OAuth2RefreshTokenGrantConfig record {|
+        *http:OAuth2RefreshTokenGrantConfig;
+        # Refresh URL
+        string refreshUrl = "https://github.com/login/oauth/access_token";
+
+        // added by hand — re-apply both after every regeneration
+        # GitHub expects `client_id` and `client_secret` in the request body, not in a Basic auth header
+        oauth2:CredentialBearer credentialBearer = oauth2:POST_BODY_BEARER;
+        # Sends `Accept: application/json`; without it GitHub returns a form-encoded token response
+        oauth2:ClientConfiguration clientConfig = {customHeaders: {"Accept": "application/json"}};
+    |};
+    ```
+
+    - `clientConfig` — `https://github.com/login/oauth/access_token` responds with an `application/x-www-form-urlencoded` body (`access_token=...&token_type=bearer`) unless the request carries `Accept: application/json`. `ballerina/oauth2` sets only `Content-Type` on the token request and then parses the response with `fromJsonString()`, so without this header every refresh fails with "Failed to get JSON from the response payload." The header is injected through `oauth2:ClientConfiguration.customHeaders`, which requires the added `import ballerina/oauth2;` in `types.bal`.
+    - `credentialBearer` — `ballerina/oauth2` defaults to `AUTH_HEADER_BEARER`, which sends the client credentials as an `Authorization: Basic` header. GitHub documents `client_id` and `client_secret` as request body parameters for this endpoint and does not document Basic client authentication, so the default is changed to `POST_BODY_BEARER` to match the documented request shape.
+
+    Note that GitHub rotates refresh tokens: each renewal returns a new refresh token and invalidates the previous one. `ballerina/oauth2` caches the rotated token in its in-memory `TokenCache` (`extractRefreshToken` → `tokenCache.update`) but exposes no hook to persist it, so a restarted process must supply a freshly obtained refresh token. This is documented in the README rather than worked around in the connector.
+
 ## OpenAPI cli command
 
 **Important:** The overlay must be applied AFTER `bal openapi align`, not before. The align
@@ -101,12 +123,15 @@ bal openapi -i docs/spec/openapi.json --mode client --license docs/license.txt -
 
 ## Managing the overlay
 
-Missing property and parameter descriptions are maintained in `docs/spec/overlay.yaml`
-rather than edited directly in `openapi.json`. Descriptions survive spec upgrades —
-when GitHub releases a new spec, re-applying the overlay restores all customisations.
+Missing property and parameter descriptions, together with the `oauth2` security scheme,
+are maintained in `docs/spec/overlay.yaml` rather than edited directly in `openapi.json`.
+They survive spec upgrades — when GitHub releases a new spec, re-applying the overlay
+restores all customisations.
 
 `overlay.yaml` contains two sections:
-- **`actions`**: schema property descriptions (`$.components.schemas.X.properties.Y`)
+- **`actions`**: the `oauth2` security scheme and the root `security` requirement
+  (targets `$.components.securitySchemes` and `$`), followed by schema property
+  descriptions (`$.components.schemas.X.properties.Y`)
 - **`path_params`**: inline query/path parameter descriptions for specific operations
 
 To add descriptions for newly undocumented properties (e.g. after a spec update), generate

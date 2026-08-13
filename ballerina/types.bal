@@ -17,6 +17,7 @@
 import ballerina/constraint;
 import ballerina/data.jsondata;
 import ballerina/http;
+import ballerina/oauth2;
 
 public type ReposownerrepobranchesbranchprotectionrestrictionsappsreposownerrepobranchesbranchprotectionrestrictionsappsOneOf12 string[];
 
@@ -17123,11 +17124,22 @@ public type TeamsListForAuthenticatedUserQueries record {
     int page = 1;
 };
 
+# OAuth2 Refresh Token Grant Configs
+public type OAuth2RefreshTokenGrantConfig record {|
+    *http:OAuth2RefreshTokenGrantConfig;
+    # Refresh URL
+    string refreshUrl = "https://github.com/login/oauth/access_token";
+    # GitHub expects `client_id` and `client_secret` in the request body, not in a Basic auth header
+    oauth2:CredentialBearer credentialBearer = oauth2:POST_BODY_BEARER;
+    # Sends `Accept: application/json`; without it GitHub returns a form-encoded token response
+    oauth2:ClientConfiguration clientConfig = {customHeaders: {"Accept": "application/json"}};
+|};
+
 # Provides a set of configurations for controlling the behaviours when communicating with a remote HTTP endpoint.
 @display {label: "Connection Config"}
 public type ConnectionConfig record {|
     # Configurations related to client authentication
-    http:BearerTokenConfig auth;
+    http:BearerTokenConfig|OAuth2RefreshTokenGrantConfig auth;
     # The HTTP version understood by the client
     http:HttpVersion httpVersion = http:HTTP_2_0;
     # Configurations related to HTTP/1.x protocol

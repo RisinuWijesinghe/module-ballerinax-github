@@ -24,6 +24,14 @@
       "url": "https://api.github.com"
     }
   ],
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "oauth2": []
+    }
+  ],
   "tags": [
     {
       "name": "actions",
@@ -133884,6 +133892,18 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT"
+      },
+      "oauth2": {
+        "type": "oauth2",
+        "description": "OAuth 2.0 authorization for GitHub Apps that have expiring user access tokens enabled. The web application (authorization code) flow issues a user-to-server access token that is sent as `Authorization: Bearer <token>`; it is valid for 8 hours and is renewed against the same token endpoint with `grant_type=refresh_token` using the refresh token issued alongside it (valid for 6 months). GitHub rotates the refresh token on every renewal. `scopes` is empty because GitHub Apps ignore the `scope` parameter and derive access from the permissions granted to the app installation. This scheme does not cover OAuth App tokens or personal access tokens: neither expires nor carries a refresh token, so both authenticate through the `bearerAuth` scheme instead. Note that the token endpoint returns an `application/x-www-form-urlencoded` body unless the request carries an `Accept: application/json` header.",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "https://github.com/login/oauth/authorize",
+            "tokenUrl": "https://github.com/login/oauth/access_token",
+            "refreshUrl": "https://github.com/login/oauth/access_token",
+            "scopes": {}
+          }
+        }
       }
     }
   }
