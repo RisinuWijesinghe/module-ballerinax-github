@@ -1,8 +1,52 @@
 overlay: 1.0.0
 info:
-  title: GitHub API Missing Descriptions Overlay
+  title: GitHub API Customisations Overlay
   version: 1.0.0
 actions:
+# ---------------------------------------------------------------------------
+# OAuth2 security scheme — lets the connector use the OAuth2 refresh token grant
+# in addition to the Personal Access Token. This is the sole definition of the
+# scheme; it is not listed in Sanitations.md.
+
+# The root `security` action below lists `bearerAuth` as well as `oauth2`: the
+# action replaces the whole list, and omitting `bearerAuth` would declare that
+# only OAuth2 is accepted. It is inert for code generation — `bal openapi` derives
+# `ConnectionConfig.auth` from the scheme definitions alone — but keeps the
+# published spec honest about the PAT path.
+#
+# The description below carries no backticks, matching every other description in
+# this overlay: bal openapi copies it verbatim into a Ballerina doc comment, where
+# a backtick opens a code reference.
+# ---------------------------------------------------------------------------
+- target: $.components.securitySchemes
+  update:
+    oauth2:
+      type: oauth2
+      description: 'OAuth 2.0 authorization for GitHub Apps that have expiring user access tokens enabled.
+        The web application (authorization code) flow issues a user-to-server access token that is sent
+        as an Authorization Bearer header; it is valid for 8 hours and is renewed against the same token
+        endpoint with grant_type=refresh_token using the refresh token issued alongside it (valid for
+        6 months). GitHub rotates the refresh token on every renewal. The scopes map is empty because
+        GitHub Apps ignore the scope parameter and derive access from the permissions granted to the app
+        installation. This scheme does not cover OAuth App tokens or personal access tokens: neither
+        expires nor carries a refresh token, so both authenticate through the bearerAuth scheme instead.
+        Note that the token endpoint returns an application/x-www-form-urlencoded body unless the request
+        carries an Accept application/json header.'
+      flows:
+        authorizationCode:
+          authorizationUrl: https://github.com/login/oauth/authorize
+          tokenUrl: https://github.com/login/oauth/access_token
+          refreshUrl: https://github.com/login/oauth/access_token
+          scopes: {}
+- target: $
+  update:
+    security:
+    - bearerAuth: []
+    - oauth2: []
+
+# ---------------------------------------------------------------------------
+# Missing schema property descriptions
+# ---------------------------------------------------------------------------
 - target: $.components.schemas.SecurityAndAnalysis.properties.secret_scanning_push_protection
   update:
     description: Settings for secret scanning push protection on the repository.

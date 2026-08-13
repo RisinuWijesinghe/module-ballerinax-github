@@ -76,43 +76,7 @@ This file documents the modifications applied to enhance the usability of the of
 
 14. Remove the `default: false` from the `allow_forking` field in the `PATCH /repos/{owner}/{repo}` request body (`OwnerrepoBody1`). The GitHub API returns a 422 ("Allow forks can only be changed on org-owned repositories") if `allow_forking` is sent for a personal repository, but the default caused it to always be included in the request. Making it optional (no default) resolves this.
 
-15. Add an `oauth2` security scheme so the connector supports the OAuth2 refresh token grant in addition to the Personal Access Token. The source spec declared only `bearerAuth` (`type: http`, `scheme: bearer`) and had no root-level `security` requirement, so the generated `ConnectionConfig.auth` was limited to `http:BearerTokenConfig` — GitHub App user access tokens, which expire after 8 hours, could not be renewed by the connector. Two additions were made under `components.securitySchemes` and at the root:
-
-    ```jsonc
-    "security": [
-      { "bearerAuth": [] },
-      { "oauth2": [] }
-    ]
-    ```
-
-    ```jsonc
-    "oauth2": {
-      "type": "oauth2",
-      "description": "...",
-      "flows": {
-        "authorizationCode": {
-          "authorizationUrl": "https://github.com/login/oauth/authorize",
-          "tokenUrl": "https://github.com/login/oauth/access_token",
-          "refreshUrl": "https://github.com/login/oauth/access_token",
-          "scopes": {}
-        }
-      }
-    }
-    ```
-
-    Only the `authorizationCode` flow is declared, because this connector models just GitHub's **web application flow** — the one that issues the user access token and refresh token pair the generated client then renews. Of the four flow types an OpenAPI 3.0 OAuth Flows Object permits (`implicit`, `password`, `clientCredentials`, `authorizationCode`), it is also the only one GitHub's token endpoint would honour.
-
-    This is not a claim that GitHub implements no other OAuth2 grant. GitHub also offers the **device flow**, which is out of scope here rather than unsupported by GitHub.
-
-    The scheme deliberately covers **only** GitHub App user access tokens with expiry enabled. OAuth App tokens and personal access tokens neither expire nor carry a refresh token, so they remain on the pre-existing `bearerAuth` scheme; the description states this so the empty `scopes` map cannot be read as an omission.
-
-    `scopes` is left empty. The OpenAPI 3.0 OAuth Flow Object requires the key but permits an empty map, and populating it would be misleading here: the only grant this scheme supports is the refresh token grant, which is available only to GitHub Apps, and GitHub Apps ignore the `scope` parameter entirely. The value is also inert for code generation — `bal openapi` keys off the presence of the flow and its `tokenUrl`, never the scope list.
-
-    Because the flow declares a `tokenUrl`, `bal openapi` widens the generated `ConnectionConfig.auth` to `http:BearerTokenConfig|OAuth2RefreshTokenGrantConfig` and emits an `OAuth2RefreshTokenGrantConfig` record that includes `*http:OAuth2RefreshTokenGrantConfig` with `refreshUrl` defaulted to the flow's `tokenUrl`. The PAT configuration (`auth: {token: ...}`) is unchanged and still resolves to `http:BearerTokenConfig`, so this is a backward-compatible change.
-
-    GitHub's published specification will never carry this scheme, so both additions must be re-applied whenever the spec is refreshed from upstream.
-
-16. Add the defaults to the generated `OAuth2RefreshTokenGrantConfig` record in `ballerina/types.bal` so the refresh token grant works against GitHub out of the box. They are **post-generation edits** — regenerating the client drops them, so they must be re-applied.
+15. Add the defaults to the generated `OAuth2RefreshTokenGrantConfig` record in `ballerina/types.bal` so the refresh token grant works against GitHub out of the box. They are **post-generation edits** — regenerating the client drops them, so they must be re-applied.
 
     ```ballerina
     # OAuth2 Refresh Token Grant Configs
@@ -159,12 +123,15 @@ bal openapi -i docs/spec/openapi.json --mode client --license docs/license.txt -
 
 ## Managing the overlay
 
-Missing property and parameter descriptions are maintained in `docs/spec/overlay.yaml`
-rather than edited directly in `openapi.json`. Descriptions survive spec upgrades —
-when GitHub releases a new spec, re-applying the overlay restores all customisations.
+Missing property and parameter descriptions, together with the `oauth2` security scheme,
+are maintained in `docs/spec/overlay.yaml` rather than edited directly in `openapi.json`.
+They survive spec upgrades — when GitHub releases a new spec, re-applying the overlay
+restores all customisations.
 
 `overlay.yaml` contains two sections:
-- **`actions`**: schema property descriptions (`$.components.schemas.X.properties.Y`)
+- **`actions`**: the `oauth2` security scheme and the root `security` requirement
+  (targets `$.components.securitySchemes` and `$`), followed by schema property
+  descriptions (`$.components.schemas.X.properties.Y`)
 - **`path_params`**: inline query/path parameter descriptions for specific operations
 
 To add descriptions for newly undocumented properties (e.g. after a spec update), generate
